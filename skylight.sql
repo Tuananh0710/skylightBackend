@@ -61,10 +61,10 @@ CREATE TABLE `follows` (
 -- --------------------------------------------------------
 
 --
--- Cấu trúc bảng cho bảng `friends`
+-- Cấu trúc bảng cho bảng `friends_requests`
 --
 
-CREATE TABLE `friends` (
+CREATE TABLE `friends_requests` (
   `id` bigint(20) NOT NULL,
   `sender_id` bigint(20) NOT NULL,
   `receiver_id` bigint(20) NOT NULL,
@@ -72,6 +72,18 @@ CREATE TABLE `friends` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `friends`
+--
+
+CREATE TABLE `friends` (
+  `id` bigint(20) NOT NULL,
+  `user_id` bigint(20) NOT NULL,
+  `friend_id` bigint(20) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 -- --------------------------------------------------------
 
 --
@@ -180,13 +192,22 @@ ALTER TABLE `follows`
   ADD KEY `idx_follows_following` (`following_id`);
 
 --
--- Chỉ mục cho bảng `friends`
+-- Chỉ mục cho bảng `friends_requests`
 --
-ALTER TABLE `friends`
+ALTER TABLE `friends_requests`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `unique_friend` (`sender_id`,`receiver_id`),
   ADD KEY `idx_friends_sender` (`sender_id`),
   ADD KEY `idx_friends_receiver` (`receiver_id`);
+
+--
+-- Chỉ mục cho bảng `friends`
+--
+ALTER TABLE `friends`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_friend` (`user_id`,`friend_id`),
+  ADD KEY `idx_friends_user` (`user_id`),
+  ADD KEY `idx_friends_friend` (`friend_id`);
 
 --
 -- Chỉ mục cho bảng `notifications`
@@ -239,6 +260,12 @@ ALTER TABLE `user_devices`
 -- AUTO_INCREMENT cho bảng `conversations`
 --
 ALTER TABLE `conversations`
+  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT cho bảng `friends_requests`
+--
+ALTER TABLE `friends_requests`
   MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT;
 
 --
@@ -296,11 +323,18 @@ ALTER TABLE `follows`
   ADD CONSTRAINT `follows_ibfk_2` FOREIGN KEY (`following_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
+-- Các ràng buộc cho bảng `friends_requests`
+--
+ALTER TABLE `friends_requests`
+  ADD CONSTRAINT `friends_requests_ibfk_1` FOREIGN KEY (`sender_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `friends_requests_ibfk_2` FOREIGN KEY (`receiver_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
 -- Các ràng buộc cho bảng `friends`
 --
 ALTER TABLE `friends`
-  ADD CONSTRAINT `friends_ibfk_1` FOREIGN KEY (`sender_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `friends_ibfk_2` FOREIGN KEY (`receiver_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `friends_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `friends_ibfk_2` FOREIGN KEY (`friend_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
 -- Các ràng buộc cho bảng `notifications`
