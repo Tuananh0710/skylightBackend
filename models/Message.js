@@ -2,32 +2,33 @@ import mongoose from "mongoose";
 
 const messageSchema = new mongoose.Schema(
   {
-    conversationId: {
+    conversation_id: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Conversation",
       required: true,
-      index: true,
+      ref: "Conversation",
+
     },
-    senderId: {
+    sender_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
     content: {
       type: String,
-      trim: true,
+      required: true,
     },
-    imUrl: {
+    imgUrl: {
       type: String,
     },
-  },
+  }, 
   {
     timestamps: true,
-  },
+  }
 );
 
-messageSchema.index({ conversationId: 1, createdAt: -1 });
+messageSchema.index({ conversation_id: 1, createdAt: -1 });
+
 
 const Message = mongoose.model("Message", messageSchema);
-
 export default Message;
+

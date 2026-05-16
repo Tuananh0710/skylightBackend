@@ -1,4 +1,4 @@
-const User = require("../models/User");
+const User = require("../models/User.js");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
@@ -23,12 +23,14 @@ exports.register = async (req, res) => {
       birthday,
     });
 
-    res
+    return res
       .status(201)
       .json({ message: "User registered successfully", userId: user.id });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Server error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
   }
 };
 
@@ -55,11 +57,18 @@ exports.login = async (req, res) => {
       { expiresIn: "1h" },
     );
 
-    res.json({
+    return res.status(200).json({
       token,
-      user: { id: user.id, username: user.username, email: user.email },
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        birthday: user.birthday,
+      },
     });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
   }
 };

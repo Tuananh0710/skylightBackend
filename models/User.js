@@ -1,5 +1,5 @@
 const { DataTypes } = require("sequelize");
-const { sequelize } = require("../configs/database");
+const { sequelize } = require("../configs/database.js");
 
 const User = sequelize.define(
   "users",
@@ -27,7 +27,7 @@ const User = sequelize.define(
       allowNull: false,
     },
     bio: {
-      type: String,
+      type: DataTypes.STRING,
       maxLength: 500,
     },
     birthday: {
