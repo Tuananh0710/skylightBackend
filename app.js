@@ -16,10 +16,12 @@ app.use(express.urlencoded({ extended: true }));
 const authRoutes = require("./routes/authRoutes.js");
 const userRoutes = require("./routes/userRoutes.js");
 const conversationRoutes = require("./routes/conversationRoute.js");
+const friendRoutes = require("./routes/friendRoute.js");
 
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/friends", friendRoutes);
 // app.use("/api/conversations", conversationRoutes);
 
 // Test Route

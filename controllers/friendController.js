@@ -1,13 +1,73 @@
-const FriendRequest = require("../models/FriendRequest.js");
-const Friend = require("../models/Friend.js");
-const User = require("../models/User.js");
+const { Op } = require("sequelize");
+const { FriendRequest, Friend, User } = require("../models/Index.js");
 
-// Thêm bạn - Gửi lời mời kết bạn
-export const addFriend = async (req, res) => {
+//Gửi lời mời kết bạn
+exports.sendFriendRequest = async (req, res) => {
   try {
+    const senderId = req.user.id;
+    const { receiverId } = req.body;
+
+    if (senderId == receiverId) {
+      return res
+        .status(400)
+        .json({ message: "You cannot add yourself as a friend." });
+    }
+
+    const [minId, maxId] =
+      senderId < receiverId ? [senderId, receiverId] : [receiverId, senderId];
+    const existingFriend = await Friend.findOne({
+      where: {
+        user_id: minId,
+        friend_id: maxId,
+      },
+    });
+    if (existingFriend) {
+      return res.status(400).json({ message: "You are already friends." });
+    }
+
+    const existingRequest = await FriendRequest.findOne({
+      where: {
+        [Op.or]: [
+          { sender_id: senderId, receiver_id: receiverId },
+          { sender_id: receiverId, receiver_id: senderId },
+        ],
+      },
+    });
+    if (existingRequest) {
+      if (existingRequest.sender_id === senderId) {
+        return res
+          .status(400)
+          .json({ message: "Friend request already sent." });
+      } else {
+        return res.status(400).json({
+          message:
+            "Bạn đã nhận được lời mời kết bạn từ người này. Vui lòng chấp nhận hoặc từ chối lời mời trước khi gửi lại.",
+          sender_id: existingRequest.sender_id,
+          receiver_id: existingRequest.receiver_id,
+          status: "pending",
+          created_at: existingRequest.created_at,
+        });
+      }
+    }
+
+    // Tạo lời mời kết bạn
+    await FriendRequest.create({
+      sender_id: senderId,
+      receiver_id: receiverId,
+    });
+
+    return res.status(201).json({
+      message: "Friend request sent.",
+      data: {
+        sender_id: senderId,
+        receiver_id: receiverId,
+        status: "pending",
+        created_at: new Date(),
+      },
+    });
   } catch (error) {
     console.error("Error adding friend:", error);
-    res.status(500).json({
+    return res.status(500).json({
       error: "An error occurred while adding friend.",
       message: error.message,
     });
@@ -15,11 +75,40 @@ export const addFriend = async (req, res) => {
 };
 
 // Chấp nhận lời mời kết bạn
-export const acceptFriendRequest = async (req, res) => {
+exports.acceptFriendRequest = async (req, res) => {
   try {
+    const receiverId = req.user.id;
+    const { senderId } = req.body;
+
+    const friendRequest = await FriendRequest.findOne({
+      where: {
+        sender_id: senderId,
+        receiver_id: receiverId,
+      },
+    });
+    if (!friendRequest) {
+      return res.status(404).json({ message: "Friend request not found." });
+    }
+
+    // Xóa lời mời kết bạn
+    await friendRequest.destroy();
+
+    // Tạo mối quan hệ bạn bè
+    await Friend.create({
+      user_id: senderId,
+      friend_id: receiverId,
+    });
+
+    return res.status(200).json({
+      message: "Friend request accepted.",
+      data: {
+        user_id: senderId,
+        friend_id: receiverId,
+      },
+    });
   } catch (error) {
     console.error("Error accepting friend request:", error);
-    res.status(500).json({
+    return res.status(500).json({
       error: "An error occurred while accepting friend request.",
       message: error.message,
     });
@@ -27,11 +116,37 @@ export const acceptFriendRequest = async (req, res) => {
 };
 
 // Từ chối lời mời kết bạn
-export const rejectFriendRequest = async (req, res) => {
+exports.rejectFriendRequest = async (req, res) => {
   try {
+    const receiverId = req.user.id;
+    const { senderId } = req.body;
+
+    const friendRequest = await FriendRequest.findOne({
+      where: {
+        sender_id: senderId,
+        receiver_id: receiverId,
+      },
+    });
+
+    if (!friendRequest) {
+      return res.status(404).json({ message: "Friend request not found." });
+    }
+
+    // Xóa lời mời kết bạn
+    await friendRequest.destroy();
+
+    return res.status(200).json({
+      message: "Friend request rejected.",
+      data: {
+        sender_id: senderId,
+        receiver_id: receiverId,
+        status: "rejected",
+        rejected_at: new Date(),
+      },
+    });
   } catch (error) {
     console.error("Error rejecting friend request:", error);
-    res.status(500).json({
+    return res.status(500).json({
       error: "An error occurred while rejecting friend request.",
       message: error.message,
     });
@@ -39,8 +154,33 @@ export const rejectFriendRequest = async (req, res) => {
 };
 
 // Hủy kết bạn
-export const removeFriend = async (req, res) => {
+exports.removeFriend = async (req, res) => {
   try {
+    const userId = req.user.id;
+    const { friendId } = req.body;
+
+    const [minId, maxId] =
+      userId < friendId ? [userId, friendId] : [friendId, userId];
+    const existingFriend = await Friend.findOne({
+      where: {
+        user_id: minId,
+        friend_id: maxId,
+      },
+    });
+    if (!existingFriend) {
+      return res
+        .status(404)
+        .json({ message: "Friend relationship not found." });
+    }
+    await existingFriend.destroy();
+
+    return res.status(200).json({
+      message: "Friend removed.",
+      data: {
+        user_id: userId,
+        friend_id: friendId,
+      },
+    });
   } catch (error) {
     console.error("Error removing friend:", error);
     res.status(500).json({
@@ -51,8 +191,26 @@ export const removeFriend = async (req, res) => {
 };
 
 // Lấy danh sách bạn bè
-export const getFriendsList = async (req, res) => {
+exports.getFriendsList = async (req, res) => {
   try {
+    const userId = req.user.id;
+
+    const friends = await Friend.findAll({
+      where: {
+        user_id: userId,
+      },
+      include: [
+        {
+          model: User,
+          as: "friend",
+          attributes: ["id", "username", "email", "avatar"],
+        },
+      ],
+    });
+    res.status(200).json({
+      message: "Friends list retrieved.",
+      data: friends,
+    });
   } catch (error) {
     console.error("Error getting friends list:", error);
     res.status(500).json({
@@ -63,24 +221,124 @@ export const getFriendsList = async (req, res) => {
 };
 
 // Lấy danh sách lời mời kết bạn đến
-export const getFriendRequests = async (req, res) => {
+exports.getFriendRequests = async (req, res) => {
   try {
+    const userId = req.user.id;
+
+    const friendRequests = await FriendRequest.findAll({
+      where: {
+        receiver_id: userId,
+      },
+      include: [
+        {
+          model: User,
+          as: "sender",
+          attributes: ["id", "username", "avatar"],
+        },
+      ],
+    });
+
+    if (friendRequests.length === 0) {
+      return res.status(200).json({
+        message: "No friend requests found.",
+        data: [],
+      });
+    }
+
+    res.status(200).json({
+      message: "List friend requests retrieved.",
+      data: friendRequests,
+    });
   } catch (error) {
     console.error("Error getting friend requests:", error);
     res.status(500).json({
-      error: "An error occurred while getting friend requests.",
+      error: "An error occurred while getting friend requests list.",
       message: error.message,
     });
   }
 };
 
-// Lấy danh sách lời mời kết bạn đã gửi
-export const getSentFriendRequests = async (req, res) => {
+// Lấy danh sách lời mời kết bạn đã gửi đi
+exports.getSentFriendRequests = async (req, res) => {
   try {
+    const userId = req.user.id;
+
+    const sentFriendRequests = await FriendRequest.findAll({
+      where: {
+        sender_id: userId,
+      },
+      include: [
+        {
+          model: User,
+          as: "receiver",
+          attributes: ["id", "username", "avatar"],
+        },
+      ],
+    });
+
+    if (sentFriendRequests.length === 0) {
+      return res.status(200).json({
+        message: "No sent friend requests found.",
+        data: [],
+      });
+    }
+
+    res.status(200).json({
+      message: "List sent friend requests retrieved.",
+      data: sentFriendRequests,
+    });
   } catch (error) {
     console.error("Error getting sent friend requests:", error);
     res.status(500).json({
       error: "An error occurred while getting sent friend requests.",
+      message: error.message,
+    });
+  }
+};
+
+//Hủy lời mời kết bạn đã gửi đi
+exports.cancelSentFriendRequest = async (req, res) => {
+  try {
+    const senderId = req.user.id;
+    const { receiverId } = req.body;
+
+    const friendRequest = await FriendRequest.findOne({
+      where: {
+        sender_id: senderId,
+        receiver_id: receiverId,
+      },
+    });
+    if (!friendRequest) {
+      return res.status(404).json({ message: "Friend request not found." });
+    }
+
+    await friendRequest.destroy();
+
+    return res.status(200).json({
+      message: "Sent friend request canceled.",
+      data: {
+        sender_id: senderId,
+        receiver_id: receiverId,
+        status: "canceled",
+        send_at: friendRequest.created_at,
+      },
+    });
+  } catch (error) {
+    console.error("Error canceling sent friend request:", error);
+    return res.status(500).json({
+      error: "An error occurred while canceling sent friend request.",
+      message: error.message,
+    });
+  }
+};
+
+// Xem chi tiết trang cá nhân của bạn bè
+exports.getFriendProfile = async (req, res) => {
+  try {
+  } catch (error) {
+    console.error("Error getting friend profile:", error);
+    return res.status(500).json({
+      error: "An error occurred while getting friend profile.",
       message: error.message,
     });
   }

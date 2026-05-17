@@ -1,5 +1,5 @@
 const { DataTypes } = require("sequelize");
-const sequelize = require("../config/database.js");
+const { sequelize } = require("../configs/database.js");
 
 const FriendRequest = sequelize.define(
   "friends_requests",
