@@ -1,5 +1,6 @@
 const { Op } = require("sequelize");
 const { FriendRequest, Friend, User } = require("../models/Index.js");
+const { request } = require("../app.js");
 
 //Gửi lời mời kết bạn
 exports.sendFriendRequest = async (req, res) => {
@@ -51,7 +52,7 @@ exports.sendFriendRequest = async (req, res) => {
     }
 
     // Tạo lời mời kết bạn
-    await FriendRequest.create({
+    const friendRequest = await FriendRequest.create({
       sender_id: senderId,
       receiver_id: receiverId,
     });
@@ -59,6 +60,7 @@ exports.sendFriendRequest = async (req, res) => {
     return res.status(201).json({
       message: "Friend request sent.",
       data: {
+        request_id: friendRequest.id,
         sender_id: senderId,
         receiver_id: receiverId,
         status: "pending",
@@ -78,11 +80,11 @@ exports.sendFriendRequest = async (req, res) => {
 exports.acceptFriendRequest = async (req, res) => {
   try {
     const receiverId = req.user.id;
-    const { senderId } = req.body;
+    const { requestId } = req.params;
 
     const friendRequest = await FriendRequest.findOne({
       where: {
-        sender_id: senderId,
+        id: requestId,
         receiver_id: receiverId,
       },
     });
@@ -93,17 +95,23 @@ exports.acceptFriendRequest = async (req, res) => {
     // Xóa lời mời kết bạn
     await friendRequest.destroy();
 
+    const [minId, maxId] =
+      friendRequest.sender_id < friendRequest.receiver_id
+        ? [friendRequest.sender_id, friendRequest.receiver_id]
+        : [friendRequest.receiver_id, friendRequest.sender_id];
+
     // Tạo mối quan hệ bạn bè
     await Friend.create({
-      user_id: senderId,
-      friend_id: receiverId,
+      user_id: minId,
+      friend_id: maxId,
     });
 
     return res.status(200).json({
       message: "Friend request accepted.",
       data: {
-        user_id: senderId,
-        friend_id: receiverId,
+        user_id: minId,
+        friend_id: maxId,
+        status: "accepted",
       },
     });
   } catch (error) {
@@ -119,11 +127,11 @@ exports.acceptFriendRequest = async (req, res) => {
 exports.rejectFriendRequest = async (req, res) => {
   try {
     const receiverId = req.user.id;
-    const { senderId } = req.body;
+    const { requestId } = req.params;
 
     const friendRequest = await FriendRequest.findOne({
       where: {
-        sender_id: senderId,
+        id: requestId,
         receiver_id: receiverId,
       },
     });
@@ -138,8 +146,8 @@ exports.rejectFriendRequest = async (req, res) => {
     return res.status(200).json({
       message: "Friend request rejected.",
       data: {
-        sender_id: senderId,
-        receiver_id: receiverId,
+        sender_id: friendRequest.sender_id,
+        receiver_id: friendRequest.receiver_id,
         status: "rejected",
         rejected_at: new Date(),
       },
@@ -157,7 +165,7 @@ exports.rejectFriendRequest = async (req, res) => {
 exports.removeFriend = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { friendId } = req.body;
+    const { friendId } = req.params;
 
     const [minId, maxId] =
       userId < friendId ? [userId, friendId] : [friendId, userId];
@@ -300,12 +308,12 @@ exports.getSentFriendRequests = async (req, res) => {
 exports.cancelSentFriendRequest = async (req, res) => {
   try {
     const senderId = req.user.id;
-    const { receiverId } = req.body;
+    const { requestId } = req.params;
 
     const friendRequest = await FriendRequest.findOne({
       where: {
+        id: requestId,
         sender_id: senderId,
-        receiver_id: receiverId,
       },
     });
     if (!friendRequest) {
@@ -318,7 +326,7 @@ exports.cancelSentFriendRequest = async (req, res) => {
       message: "Sent friend request canceled.",
       data: {
         sender_id: senderId,
-        receiver_id: receiverId,
+        receiver_id: friendRequest.receiver_id,
         status: "canceled",
         send_at: friendRequest.created_at,
       },
