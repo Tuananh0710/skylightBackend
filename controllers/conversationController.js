@@ -97,28 +97,6 @@ exports.getConversations = async (req, res) => {
   }
 };
 
-// Lấy tin nhắn trong cuộc trò chuyện
-exports.getMessage = async (req, res) => {
-  try {
-    const { conversation_id } = req.params;
-
-    // LƯU Ý: Do bạn chưa cung cấp Message Model, đây sẽ là hàm giả lập.
-    // Khi có Message Model, logic sẽ tương tự như sau:
-    // const messages = await Message.findAll({ where: { conversation_id } });
-
-    return res.status(501).json({
-      message: "Chưa thể lấy tin nhắn vì chưa định nghĩa model Message",
-      conversation_id,
-    });
-  } catch (error) {
-    console.error("Error getMessage:", error);
-    return res.status(500).json({
-      error: "Error getMessage:",
-      details: error.message,
-    });
-  }
-};
-
 // Thêm thành viên vào cuộc trò chuyện
 exports.addMember = async (req, res) => {
   try {
@@ -287,3 +265,5 @@ exports.getMembers = async (req, res) => {
     });
   }
 };
+
+// tìm kiếm cuộc trò chuyện theo

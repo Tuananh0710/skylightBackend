@@ -1,5 +1,18 @@
 const express = require("express");
-const route = express.Router();
-const { sendDirectMessage } = require("../controllers/messageController.js");
+const router = express.Router();
+const authMiddleware = require("../middlewares/authMiddleware.js");
+const {
+  sendDirectMessage,
+  sendGroupMessage,
+  getChatHistory,
+  editMessage,
+  deleteMessage,
+} = require("../controllers/messageController.js");
 
-route.post("/");
+router.post("/direct", authMiddleware, sendDirectMessage);
+router.post("/group", authMiddleware, sendGroupMessage);
+router.get("/history/:conversationId", authMiddleware, getChatHistory);
+router.put("/edit/:messageId", authMiddleware, editMessage);
+router.delete("/delete/:messageId", authMiddleware, deleteMessage);
+
+module.exports = router;

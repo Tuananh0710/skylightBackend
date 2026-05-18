@@ -9,6 +9,8 @@ const {
 } = require("../controllers/userController.js");
 
 router.get("/profile", authMiddleware, getUserInfo);
+router.get("/profile/:id", authMiddleware, getUserInfo);
+
 router.put("/profile", authMiddleware, updateUserInfo);
 router.get("/friends/birthdays", authMiddleware, getFriendsBirthdays);
 router.get("/search", authMiddleware, searchUsers);

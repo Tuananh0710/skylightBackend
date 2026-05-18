@@ -5,7 +5,7 @@ const Conversation_members = sequelize.define(
   "conversation_members",
   {
     conversation_id: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.BIGINT,
       primaryKey: true,
       references: {
         model: "conversations",
@@ -13,7 +13,7 @@ const Conversation_members = sequelize.define(
       },
     },
     user_id: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.BIGINT,
       primaryKey: true,
       references: {
         model: "users",

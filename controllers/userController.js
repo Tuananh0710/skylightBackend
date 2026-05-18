@@ -1,30 +1,76 @@
-const { Friend, User } = require("../models/Index.js");
+const { Friend, User, FriendRequest } = require("../models/Index.js");
 const { Op } = require("sequelize");
 
-// Lấy profile cá nhân
+// Xem trang cá nhân của mình hoặc của người khác
 exports.getUserInfo = async (req, res) => {
   try {
-    const userId = req.user.id; // Lấy ID người dùng từ token
+    const currentUserId = req.user.id;
 
-    const user = await User.findByPk(userId, {
-      attributes: [
-        "id",
-        "username",
-        "email",
-        "birthday",
-        "avatar",
-        "bio",
-        "created_at",
-      ],
+    const targetUserId = req.params.id
+      ? parseInt(req.params.id)
+      : currentUserId;
+
+    // 1. Phân loại xem đang tự xem mình hay xem người khác
+    const isOwnProfile = currentUserId === targetUserId;
+
+    // 2. Định nghĩa các trường dữ liệu cần lấy để bảo mật
+    const queryAttributes = isOwnProfile
+      ? ["id", "username", "email", "birthday", "avatar", "bio", "created_at"]
+      : ["id", "username", "birthday", "avatar", "bio", "created_at"];
+
+    // 3. Lấy thông tin User
+    const user = await User.findByPk(targetUserId, {
+      attributes: queryAttributes,
     });
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    return res.json({
+    // 4. Kiểm tra trạng thái kết bạn (Nếu đang xem trang người khác)
+    let relationStatus = "none";
+
+    if (!isOwnProfile) {
+      const [minId, maxId] =
+        currentUserId < targetUserId
+          ? [currentUserId, targetUserId]
+          : [targetUserId, currentUserId];
+
+      // Kiểm tra trong bảng Friend
+      const isFriend = await Friend.findOne({
+        where: { user_id: minId, friend_id: maxId },
+      });
+
+      if (isFriend) {
+        relationStatus = "friend";
+      } else {
+        // Nếu chưa là bạn, kiểm tra xem có lời mời nào đang treo không
+        const request = await FriendRequest.findOne({
+          where: {
+            [Op.or]: [
+              { sender_id: currentUserId, receiver_id: targetUserId },
+              { sender_id: targetUserId, receiver_id: currentUserId },
+            ],
+          },
+        });
+
+        if (request) {
+          relationStatus =
+            request.sender_id === currentUserId
+              ? "pending_sent" // Mình đã gửi cho họ
+              : "pending_received"; // Họ gửi cho mình
+        }
+      }
+    }
+
+    // 5. Trả về kết quả
+    return res.status(200).json({
       message: "User info retrieved successfully",
-      user,
+      data: {
+        user,
+        isOwnProfile, // true/false để Front-end biết có hiện nút "Chỉnh sửa trang cá nhân" không
+        relationStatus, // Trạng thái mối quan hệ để vẽ nút "Chấp nhận", "Hủy lời mời"
+      },
     });
   } catch (error) {
     console.error("Error getting user info:", error);

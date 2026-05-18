@@ -339,15 +339,3 @@ exports.cancelSentFriendRequest = async (req, res) => {
     });
   }
 };
-
-// Xem chi tiết trang cá nhân của bạn bè
-exports.getFriendProfile = async (req, res) => {
-  try {
-  } catch (error) {
-    console.error("Error getting friend profile:", error);
-    return res.status(500).json({
-      error: "An error occurred while getting friend profile.",
-      message: error.message,
-    });
-  }
-};

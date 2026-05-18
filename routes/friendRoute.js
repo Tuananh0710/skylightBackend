@@ -27,7 +27,4 @@ router.post(
   cancelSentFriendRequest,
 );
 
-// để lại đến khi đã hoàn thành xong chức năng post.
-router.get("/profile/:friendId", authMiddleware, getFriendProfile);
-
 module.exports = router;
